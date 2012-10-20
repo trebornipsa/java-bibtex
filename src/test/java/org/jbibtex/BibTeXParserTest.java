@@ -33,19 +33,6 @@ public class BibTeXParserTest {
 
 		Map<Key, BibTeXEntry> entries = database.getEntries();
 		assertEquals(4030, entries.size());
-
-		Collection<BibTeXEntry> values = entries.values();
-		assertEquals(1890, countType(values, BibTeXEntry.TYPE_ARTICLE));
-		assertEquals(1675, countType(values, BibTeXEntry.TYPE_BOOK));
-		assertEquals(232, countType(values, BibTeXEntry.TYPE_INPROCEEDINGS));
-		assertEquals(8, countType(values, BibTeXEntry.TYPE_MANUAL));
-		assertEquals(13, countType(values, BibTeXEntry.TYPE_MASTERSTHESIS));
-		assertEquals(62, countType(values, BibTeXEntry.TYPE_MISC));
-		assertEquals(6, countType(values, new Key("periodical")));
-		assertEquals(1, countType(values, BibTeXEntry.TYPE_PHDTHESIS));
-		assertEquals(114, countType(values, BibTeXEntry.TYPE_PROCEEDINGS));
-		assertEquals(20, countType(values, BibTeXEntry.TYPE_TECHREPORT));
-		assertEquals(9, countType(values, BibTeXEntry.TYPE_UNPUBLISHED));
 	}
 
 	@Test
@@ -60,20 +47,6 @@ public class BibTeXParserTest {
 
 		Map<Key, BibTeXEntry> entries = database.getEntries();
 		assertEquals(2273, entries.size());
-
-		Collection<BibTeXEntry> values = entries.values();
-		assertEquals(645, countType(values, BibTeXEntry.TYPE_ARTICLE));
-		assertEquals(1447, countType(values, BibTeXEntry.TYPE_BOOK));
-		assertEquals(6, countType(values, BibTeXEntry.TYPE_INCOLLECTION));
-		assertEquals(48, countType(values, BibTeXEntry.TYPE_INPROCEEDINGS));
-		assertEquals(31, countType(values, BibTeXEntry.TYPE_MANUAL));
-		assertEquals(12, countType(values, BibTeXEntry.TYPE_MASTERSTHESIS));
-		assertEquals(7, countType(values, BibTeXEntry.TYPE_MISC));
-		assertEquals(6, countType(values, new Key("periodical")));
-		assertEquals(2, countType(values, BibTeXEntry.TYPE_PHDTHESIS));
-		assertEquals(34, countType(values, BibTeXEntry.TYPE_PROCEEDINGS));
-		assertEquals(33, countType(values, BibTeXEntry.TYPE_TECHREPORT));
-		assertEquals(2, countType(values, BibTeXEntry.TYPE_UNPUBLISHED));
 	}
 
 	static
@@ -93,19 +66,5 @@ public class BibTeXParserTest {
 		} finally {
 			is.close();
 		}
-	}
-
-	static
-	private int countType(Collection<BibTeXEntry> entries, Key type){
-		int count = 0;
-
-		for(BibTeXEntry entry : entries){
-
-			if((entry.getType()).equals(type)){
-				count++;
-			}
-		}
-
-		return count;
 	}
 }
