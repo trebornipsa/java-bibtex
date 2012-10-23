@@ -11,6 +11,12 @@ public class BibTeXParser {
 
 	private BibTeXDatabase database = null;
 
+	private BibTeXObjectFactory objectFactory = BibTeXObjectFactory.DEFAULT;
+
+	private KeyFactory keyFactory = KeyFactory.DEFAULT;
+
+	private ValueFactory valueFactory = ValueFactory.DEFAULT;
+
 
 	public BibTeXParser(){
 		this(new StringReader(""));
@@ -41,20 +47,22 @@ public class BibTeXParser {
 	private void resolveCrossReferences(){
 		Map<Key, BibTeXEntry> entries = getDatabase().getEntries();
 
+		Key crossrefKey = getKeyFactory().createKey("crossref");
+
 		for(BibTeXEntry entry : entries.values()){
 			Map<Key, Value> fields = entry.getFields();
 
-			Value value = fields.get(BibTeXEntry.KEY_CROSSREF);
+			Value value = fields.get(crossrefKey);
 			if((value == null) || (value instanceof CrossReferenceValue)){
 				continue;
 			}
 
-			Key key = new Key(value.toUserString());
+			Key key = getKeyFactory().createKey(value.toUserString());
 
 			BibTeXEntry object = getDatabase().resolveEntry(key);
 			checkCrossReferenceResolution(key, object);
 
-			entry.addField(BibTeXEntry.KEY_CROSSREF, new CrossReferenceValue(value, object));
+			entry.addField(crossrefKey, getValueFactory().createCrossReferenceValue(value, object));
 		}
 	}
 
@@ -79,6 +87,45 @@ public class BibTeXParser {
 
 	private void setDatabase(BibTeXDatabase database){
 		this.database = database;
+	}
+
+	public BibTeXObjectFactory getObjectFactory(){
+		return this.objectFactory;
+	}
+
+	public void setObjectFactory(BibTeXObjectFactory objectFactory){
+
+		if(objectFactory == null){
+			throw new IllegalArgumentException();
+		}
+
+		this.objectFactory = objectFactory;
+	}
+
+	public KeyFactory getKeyFactory(){
+		return this.keyFactory;
+	}
+
+	public void setKeyFactory(KeyFactory keyFactory){
+
+		if(keyFactory == null){
+			throw new IllegalArgumentException();
+		}
+
+		this.keyFactory = keyFactory;
+	}
+
+	public ValueFactory getValueFactory(){
+		return this.valueFactory;
+	}
+
+	public void setValueFactory(ValueFactory valueFactory){
+
+		if(valueFactory == null){
+			throw new IllegalArgumentException();
+		}
+
+		this.valueFactory = valueFactory;
 	}
 
 	static
@@ -290,7 +337,7 @@ private BibTeXComment Comment() :
 	)
 
 	{
-		return new BibTeXComment(new StringValue(string, StringValue.Style.BRACED));
+		return getObjectFactory().createComment(getValueFactory().createStringValue(string, StringValue.Style.BRACED));
 	}
 }
 
@@ -321,7 +368,7 @@ private BibTeXInclude Include():
 			throw new ParseException(e.getMessage());
 		}
 
-		return new BibTeXInclude(new StringValue(string, StringValue.Style.BRACED), database);
+		return getObjectFactory().createInclude(getValueFactory().createStringValue(string, StringValue.Style.BRACED), database);
 	}
 }
 
@@ -338,7 +385,7 @@ private BibTeXPreamble Preamble() :
 	)
 
 	{
-		return new BibTeXPreamble(value);
+		return getObjectFactory().createPreamble(value);
 	}
 }
 
@@ -355,7 +402,7 @@ private BibTeXString String() :
 	)
 
 	{
-		return new BibTeXString(field.getKey(), field.getValue());
+		return getObjectFactory().createString(field.getKey(), field.getValue());
 	}
 }
 
@@ -376,7 +423,9 @@ private BibTeXEntry Entry() :
 	)
 
 	{
-		BibTeXEntry entry = new BibTeXEntry(new Key(type.image), new Key(key.image));
+		KeyFactory keyFactory = getKeyFactory();
+
+		BibTeXEntry entry = getObjectFactory().createEntry(keyFactory.createKey(type.image), keyFactory.createKey(key.image));
 
 		for(Field field : fields){
 			entry.addField(field.getKey(), field.getValue());
@@ -460,7 +509,7 @@ private Key Key() :
 	token = Name()
 
 	{
-		return new Key(token.image);
+		return getKeyFactory().createKey(token.image);
 	}
 }
 
@@ -475,7 +524,7 @@ private Value Value() :
 
 	{
 		if(right != null){
-			return new ConcateValue(left, right);
+			return getValueFactory().createConcateValue(left, right);
 		}
 
 		return left;
@@ -492,19 +541,17 @@ private Value SimpleValue() :
 	(
 		<LBRACE> string = Literal(1, "}")
 		{
-			return new StringValue(string, StringValue.Style.BRACED);
+			return getValueFactory().createStringValue(string, StringValue.Style.BRACED);
 		}
 		|
 		<QUOTE> string = Literal(0, "\"")
 		{
-			return new StringValue(string, StringValue.Style.QUOTED);
+			return getValueFactory().createStringValue(string, StringValue.Style.QUOTED);
 		}
 		|
 		token = Name()
 		{
-			KeyValue value = new KeyValue(token.image);
-
-			Key key = value.toKey();
+			Key key = getKeyFactory().createKey(token.image);
 
 			BibTeXString object = getDatabase().resolveString(key);
 			if(object == null){
@@ -513,12 +560,14 @@ private Value SimpleValue() :
 
 			checkStringResolution(key, object);
 
-			return new ReferenceValue(value, object);
+			KeyValue value = getValueFactory().createKeyValue(token.image);
+
+			return getValueFactory().createReferenceValue(value, object);
 		}
 		|
 		token = <DIGITS>
 		{
-			return new DigitStringValue(token.image);
+			return getValueFactory().createDigitStringValue(token.image);
 		}
 	)
 }
