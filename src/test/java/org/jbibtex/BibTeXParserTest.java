@@ -12,15 +12,6 @@ import static org.junit.Assert.*;
 
 public class BibTeXParserTest {
 
-	@Before
-	public void initAckMacros(){
-		String[] macros = {"ack-bnb", "ack-bs", "ack-hk", "ack-kl", "ack-kr", "ack-pb", "ack-rfb"};
-
-		for(String macro : macros){
-			BibTeXParser.addMacro(macro, macro);
-		}
-	}
-
 	@Test
 	public void parseJava() throws Exception {
 		BibTeXDatabase database = parse("/java.bib");
@@ -85,6 +76,12 @@ public class BibTeXParserTest {
 
 			try {
 				BibTeXParser parser = new BibTeXParser();
+
+				String[] macros = {"ack-bnb", "ack-bs", "ack-hk", "ack-kl", "ack-kr", "ack-pb", "ack-rfb"};
+
+				for(String macro : macros){
+					parser.addMacro(macro, macro);
+				}
 
 				return parser.parse(reader);
 			} finally {
