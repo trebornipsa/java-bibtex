@@ -17,6 +17,10 @@ public class BibTeXParser {
 
 	private ValueFactory valueFactory = ValueFactory.DEFAULT;
 
+	private boolean initialized = false;
+
+	private KeyMap<BibTeXString> macros = new KeyMap<BibTeXString>();
+
 
 	public BibTeXParser(){
 		this(new StringReader(""));
@@ -128,29 +132,12 @@ public class BibTeXParser {
 		this.valueFactory = valueFactory;
 	}
 
-	static
-	public KeyMap<BibTeXString> getMacros(){
-		return BibTeXParser.macros;
-	}
+	protected void initMacros(){
 
-	static
-	public void addMacro(String key, String value){
-		addMacro(new BibTeXString(new Key(key), new StringValue(value, StringValue.Style.BRACED)));
-	}
+		if(this.initialized){
+			return;
+		}
 
-	static
-	public void addMacro(BibTeXString macro){
-		BibTeXParser.macros.put(macro.getKey(), macro);
-	}
-
-	static
-	public void removeMacro(BibTeXString macro){
-		BibTeXParser.macros.remove(macro.getKey());
-	}
-
-	private static final KeyMap<BibTeXString> macros = new KeyMap<BibTeXString>();
-
-	static {
 		addMacro("jan", "January");
 		addMacro("feb", "February");
 		addMacro("mar", "March");
@@ -163,6 +150,24 @@ public class BibTeXParser {
 		addMacro("oct", "October");
 		addMacro("nov", "November");
 		addMacro("dec", "December");
+
+		this.initialized = true;
+	}
+
+	public KeyMap<BibTeXString> getMacros(){
+		return this.macros;
+	}
+
+	protected void addMacro(String key, String value){
+		addMacro(getObjectFactory().createString(getKeyFactory().createKey(key), getValueFactory().createStringValue(value, StringValue.Style.BRACED)));
+	}
+
+	public void addMacro(BibTeXString macro){
+		this.macros.put(macro.getKey(), macro);
+	}
+
+	public void removeMacro(BibTeXString macro){
+		this.macros.remove(macro.getKey());
 	}
 
 
@@ -286,6 +291,8 @@ private BibTeXDatabase Database() :
 }
 {
 	{
+		initMacros();
+
 		setDatabase(database);
 	}
 
@@ -555,7 +562,7 @@ private Value SimpleValue() :
 
 			BibTeXString object = getDatabase().resolveString(key);
 			if(object == null){
-				object = (BibTeXParser.getMacros()).get(key);
+				object = getMacros().get(key);
 			}
 
 			checkStringResolution(key, object);
