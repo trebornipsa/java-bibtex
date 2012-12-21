@@ -417,22 +417,36 @@ private BibTeXEntry Entry() :
 {
 	Token type;
 
-	Token key;
+	Token key = null;
 
 	List<Field> fields;
 }
 {
 	<AT> type = <NAME>
 	(
-		<LPAREN> key = Identifier() <COMMA> fields = AssignmentList() ( <COMMA> )? <RPAREN>
+		<LPAREN> 
+		(
+			LOOKAHEAD( Identifier() <COMMA> )
+			key = Identifier() <COMMA> fields = AssignmentList()
+			|
+			fields = AssignmentList()
+		)
+		( <COMMA> )? <RPAREN>
 		|
-		<LBRACE> key = Identifier() <COMMA> fields = AssignmentList() ( <COMMA> )? <RBRACE>
+		<LBRACE> 
+		(
+			LOOKAHEAD( Identifier() <COMMA> )
+			key = Identifier() <COMMA> fields = AssignmentList()
+			|
+			fields = AssignmentList()
+		)
+		( <COMMA> )? <RBRACE>
 	)
 
 	{
 		KeyFactory keyFactory = getKeyFactory();
 
-		BibTeXEntry entry = getObjectFactory().createEntry(keyFactory.createKey(type.image), keyFactory.createKey(key.image));
+		BibTeXEntry entry = getObjectFactory().createEntry(keyFactory.createKey(type.image), keyFactory.createKey(key != null ? key.image : null));
 
 		for(Field field : fields){
 			entry.addField(field.getKey(), field.getValue());
