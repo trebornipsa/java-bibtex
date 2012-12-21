@@ -5,7 +5,15 @@ package org.jbibtex;
 
 public class KeyFactory {
 
+	private long id = 1L;
+
+
 	public Key createKey(String value){
+
+		if(value == null){
+			value = String.valueOf("jbibtex-" + this.id++);
+		}
+
 		return new Key(value);
 	}
 
