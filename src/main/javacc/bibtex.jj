@@ -11,15 +11,7 @@ public class BibTeXParser {
 
 	private BibTeXDatabase database = null;
 
-	private BibTeXObjectFactory objectFactory = BibTeXObjectFactory.DEFAULT;
-
-	private KeyFactory keyFactory = KeyFactory.DEFAULT;
-
-	private ValueFactory valueFactory = ValueFactory.DEFAULT;
-
-	private boolean initialized = false;
-
-	private KeyMap<BibTeXString> macros = new KeyMap<BibTeXString>();
+	private long id = 1L;
 
 
 	public BibTeXParser(){
@@ -51,22 +43,20 @@ public class BibTeXParser {
 	private void resolveCrossReferences(){
 		Map<Key, BibTeXEntry> entries = getDatabase().getEntries();
 
-		Key crossrefKey = getKeyFactory().createKey("crossref");
-
 		for(BibTeXEntry entry : entries.values()){
 			Map<Key, Value> fields = entry.getFields();
 
-			Value value = fields.get(crossrefKey);
+			Value value = fields.get(BibTeXEntry.KEY_CROSSREF);
 			if((value == null) || (value instanceof CrossReferenceValue)){
 				continue;
 			}
 
-			Key key = getKeyFactory().createKey(value.toUserString());
+			Key key = new Key(value.toUserString());
 
 			BibTeXEntry object = getDatabase().resolveEntry(key);
 			checkCrossReferenceResolution(key, object);
 
-			entry.addField(crossrefKey, getValueFactory().createCrossReferenceValue(value, object));
+			entry.addField(BibTeXEntry.KEY_CROSSREF, new CrossReferenceValue(value, object));
 		}
 	}
 
@@ -85,6 +75,16 @@ public class BibTeXParser {
 		}
 	}
 
+	/**
+	 * Generates a key value for an anonymous BibTeX bibliography database entry.
+	 *
+	 * @see BibTeXEntry#getKey
+	 * @see BibTeXDatabase#resolveEntry(Key)
+	 */
+	public String nextKey(){
+		return String.valueOf("jbibtex-" + this.id++);
+	}
+
 	public BibTeXDatabase getDatabase(){
 		return this.database;
 	}
@@ -93,51 +93,44 @@ public class BibTeXParser {
 		this.database = database;
 	}
 
-	public BibTeXObjectFactory getObjectFactory(){
-		return this.objectFactory;
+	static
+	public KeyMap<BibTeXString> getMacros(){
+		return BibTeXParser.macros;
 	}
 
-	public void setObjectFactory(BibTeXObjectFactory objectFactory){
+	static
+	public void addMacro(String key, String value){
+		addMacro(new BibTeXString(new Key(key), new StringValue(value, StringValue.Style.BRACED)));
+	}
 
-		if(objectFactory == null){
-			throw new IllegalArgumentException();
+	static
+	public void addMacro(BibTeXString macro){
+		BibTeXParser.macros.put(macro.getKey(), macro);
+	}
+
+	static
+	public void removeMacro(BibTeXString macro){
+		BibTeXParser.macros.remove(macro.getKey());
+	}
+
+	static
+	private boolean isDigitString(String string){
+
+		for(int i = 0; i < string.length(); i++){
+			char c = string.charAt(i);
+
+			// Only ASCII digits from '0' to '9'
+			if(c < '0' || c > '9'){
+				return false;
+			}
 		}
-
-		this.objectFactory = objectFactory;
+		
+		return (string.length() > 0);
 	}
 
-	public KeyFactory getKeyFactory(){
-		return this.keyFactory;
-	}
+	private static final KeyMap<BibTeXString> macros = new KeyMap<BibTeXString>();
 
-	public void setKeyFactory(KeyFactory keyFactory){
-
-		if(keyFactory == null){
-			throw new IllegalArgumentException();
-		}
-
-		this.keyFactory = keyFactory;
-	}
-
-	public ValueFactory getValueFactory(){
-		return this.valueFactory;
-	}
-
-	public void setValueFactory(ValueFactory valueFactory){
-
-		if(valueFactory == null){
-			throw new IllegalArgumentException();
-		}
-
-		this.valueFactory = valueFactory;
-	}
-
-	protected void initMacros(){
-
-		if(this.initialized){
-			return;
-		}
-
+	static {
 		addMacro("jan", "January");
 		addMacro("feb", "February");
 		addMacro("mar", "March");
@@ -150,24 +143,6 @@ public class BibTeXParser {
 		addMacro("oct", "October");
 		addMacro("nov", "November");
 		addMacro("dec", "December");
-
-		this.initialized = true;
-	}
-
-	public KeyMap<BibTeXString> getMacros(){
-		return this.macros;
-	}
-
-	protected void addMacro(String key, String value){
-		addMacro(getObjectFactory().createString(getKeyFactory().createKey(key), getValueFactory().createStringValue(value, StringValue.Style.BRACED)));
-	}
-
-	public void addMacro(BibTeXString macro){
-		this.macros.put(macro.getKey(), macro);
-	}
-
-	public void removeMacro(BibTeXString macro){
-		this.macros.remove(macro.getKey());
 	}
 
 
@@ -278,9 +253,7 @@ TOKEN :
 <DEFAULT>
 TOKEN :
 {
-	< NAME : ( <ASCII_LETTER> | <UNICODE_LETTER> ) ( <ASCII_LETTER> | <ASCII_DIGIT> | <UNICODE_LETTER> | <NAME_SPACING> )* >
-	|
-	< DIGITS : ( <ASCII_DIGIT> )+ >
+	< NAME : ( <ASCII_LETTER> | <ASCII_DIGIT> | <UNICODE_LETTER> ) ( <ASCII_LETTER> | <ASCII_DIGIT> | <UNICODE_LETTER> | <NAME_SPACING> )* >
 	|
 	< #ASCII_LETTER : ["a"-"z", "A"-"Z"] >
 	|
@@ -306,8 +279,6 @@ private BibTeXDatabase Database() :
 }
 {
 	{
-		initMacros();
-
 		setDatabase(database);
 	}
 
@@ -359,7 +330,7 @@ private BibTeXComment Comment() :
 	)
 
 	{
-		return getObjectFactory().createComment(getValueFactory().createStringValue(string, StringValue.Style.BRACED));
+		return new BibTeXComment(new StringValue(string, StringValue.Style.BRACED));
 	}
 }
 
@@ -390,7 +361,7 @@ private BibTeXInclude Include():
 			throw new ParseException(e.getMessage());
 		}
 
-		return getObjectFactory().createInclude(getValueFactory().createStringValue(string, StringValue.Style.BRACED), database);
+		return new BibTeXInclude(new StringValue(string, StringValue.Style.BRACED), database);
 	}
 }
 
@@ -407,7 +378,7 @@ private BibTeXPreamble Preamble() :
 	)
 
 	{
-		return getObjectFactory().createPreamble(value);
+		return new BibTeXPreamble(value);
 	}
 }
 
@@ -424,7 +395,7 @@ private BibTeXString String() :
 	)
 
 	{
-		return getObjectFactory().createString(field.getKey(), field.getValue());
+		return new BibTeXString(field.getKey(), field.getValue());
 	}
 }
 
@@ -459,9 +430,7 @@ private BibTeXEntry Entry() :
 	)
 
 	{
-		KeyFactory keyFactory = getKeyFactory();
-
-		BibTeXEntry entry = getObjectFactory().createEntry(keyFactory.createKey(type.image), keyFactory.createKey(key != null ? key.image : null));
+		BibTeXEntry entry = new BibTeXEntry(new Key(type.image), key != null ? new Key(key.image) : new Key(nextKey()));
 
 		for(Field field : fields){
 			entry.addField(field.getKey(), field.getValue());
@@ -505,8 +474,6 @@ private Token Identifier() :
 }
 {
 	(
-		token = <DIGITS>
-		|
 		token = Name()
 	)
 
@@ -545,7 +512,7 @@ private Key Key() :
 	token = Name()
 
 	{
-		return getKeyFactory().createKey(token.image);
+		return new Key(token.image);
 	}
 }
 
@@ -560,7 +527,7 @@ private Value Value() :
 
 	{
 		if(right != null){
-			return getValueFactory().createConcateValue(left, right);
+			return new ConcateValue(left, right);
 		}
 
 		return left;
@@ -577,33 +544,36 @@ private Value SimpleValue() :
 	(
 		<LBRACE> string = Literal(1, "}")
 		{
-			return getValueFactory().createStringValue(string, StringValue.Style.BRACED);
+			return new StringValue(string, StringValue.Style.BRACED);
 		}
 		|
 		<QUOTE> string = Literal(0, "\"")
 		{
-			return getValueFactory().createStringValue(string, StringValue.Style.QUOTED);
+			return new StringValue(string, StringValue.Style.QUOTED);
 		}
 		|
 		token = Name()
 		{
-			Key key = getKeyFactory().createKey(token.image);
+			boolean digits = isDigitString(token.image);
 
-			BibTeXString object = getDatabase().resolveString(key);
-			if(object == null){
-				object = getMacros().get(key);
+			if(!digits){
+				KeyValue value = new KeyValue(token.image);
+
+				Key key = value.toKey();
+
+				BibTeXString object = getDatabase().resolveString(key);
+				if(object == null){
+					object = (BibTeXParser.getMacros()).get(key);
+				}
+
+				checkStringResolution(key, object);
+
+				return new ReferenceValue(value, object);
+			} else
+
+			{
+				return new DigitStringValue(token.image);
 			}
-
-			checkStringResolution(key, object);
-
-			KeyValue value = getValueFactory().createKeyValue(token.image);
-
-			return getValueFactory().createReferenceValue(value, object);
-		}
-		|
-		token = <DIGITS>
-		{
-			return getValueFactory().createDigitStringValue(token.image);
 		}
 	)
 }
