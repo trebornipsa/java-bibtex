@@ -12,6 +12,12 @@ public class KeyValue extends Value {
 		setString(string);
 	}
 
+	public Key toKey(){
+		Key key = new Key(getString());
+
+		return key;
+	}
+
 	@Override
 	protected String format(){
 		return getString();
